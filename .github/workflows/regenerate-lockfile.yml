@@ -1,0 +1,64 @@
+name: Regenerate lockfile (Linux)
+
+# 一次性维护工具：在 **Linux** 上重新生成 package-lock.json。
+#
+# 为什么必须这么做：
+# 在 Windows 上跑 `npm install --package-lock-only` 会**丢掉其他平台专属的 optional 依赖**。
+# 实测漏掉了 chokidar 的 fsevents 整棵子树（fsevents / bindings / nan / file-uri-to-path），
+# 于是 CI 里 `npm ci` 在 ubuntu 上直接失败：
+#
+#   npm error code EUSAGE
+#   `npm ci` can only install packages when your package.json and package-lock.json
+#   or npm-shrinkwrap.json are in sync.
+#   npm error Missing: fsevents@1.2.13 from lock file
+#
+# 关键在于：**锁文件必须在目标平台生成**，否则它描述的不是 CI 真正会装出来的那棵树。
+# 这个失败只在发布时暴露，而且报错指向「lock 不同步」而不是「你在 Windows 生成的」，
+# 很容易被误诊。
+#
+# 用法：Actions → Regenerate lockfile (Linux) → Run workflow
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  regenerate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+          package-manager-cache: false
+
+      - name: Regenerate lockfile on Linux
+        run: |
+          rm -f package-lock.json
+          npm install --package-lock-only --no-audit --no-fund
+
+      # 硬断言：如果 fsevents 还是不在锁文件里，说明问题没解决，
+      # 宁可让这一步红掉，也不要把一个同样坏掉的锁文件提交上去。
+      - name: Assert the darwin-only optional subtree is present
+        run: |
+          node -e "const p=require('./package-lock.json').packages||{};const f=p['node_modules/fsevents'];if(!f){console.error('FAIL: fsevents still missing from lockfile');process.exit(1);}console.log('OK fsevents present:',f.version);"
+
+      - name: Commit if changed
+        run: |
+          if git diff --quiet -- package-lock.json; then
+            echo "lockfile unchanged — nothing to do"
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json
+          git commit -m "chore: regenerate package-lock.json on Linux
+
+A Windows-generated lockfile omits platform-specific optional dependencies
+(chokidar -> fsevents -> bindings/nan/file-uri-to-path), which makes \`npm ci\`
+fail on ubuntu with EUSAGE before the publish step is ever reached."
+          git push
