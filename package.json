@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-freetoolhub",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "n8n community node for FreeToolHub — call 44 MCP calculators (US tax, finance, business, plus an MCP engineering suite for context budgeting, server trust scoring and security auditing) directly inside your automation workflows.",
   "keywords": [
     "n8n-community-node-package",
