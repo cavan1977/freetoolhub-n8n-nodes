@@ -61,6 +61,28 @@ jobs:
       - name: Build and test
         run: npm test
 
+      # 发布前预检：把 OIDC token 拿去 npm 换一次发布凭证，把注册表的原话打出来。
+      #
+      # 为什么必须放在这个文件里：npm 会用 token 里的 `workflow_ref` 去比对
+      # trusted publisher 上填的 workflow filename。所以从别的 workflow 测是**必错**的
+      # （实测从 oidc-diagnostic.yml 测，返回 "package not found"），
+      # 只有从 publish.yml 里测才有意义。
+      #
+      # 这个步骤**故意不 fail**：预检失败时让后面的 npm publish 用真实错误说话，
+      # 这样日志里既有注册表的原话，也有 npm CLI 的原始报错。
+      - name: Preflight - can we exchange an OIDC token for this package?
+        if: always()
+        continue-on-error: true
+        run: |
+          set +e
+          RESP=$(curl -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=npm:registry.npmjs.org")
+          TOKEN=$(node -p "JSON.parse(process.argv[1]).value" "$RESP")
+          echo "::add-mask::$TOKEN"
+          node -e "const p=JSON.parse(Buffer.from(process.argv[1].split('.')[1],'base64url').toString());console.log('token.repository     =',p.repository);console.log('token.repository_owner =',p.repository_owner);console.log('token.workflow_ref   =',p.workflow_ref);" "$TOKEN"
+          echo "--- registry exchange result ---"
+          curl -sS -X POST "https://registry.npmjs.org/-/npm/v1/oidc/token/exchange/package/n8n-nodes-freetoolhub" -H "Authorization: Bearer $TOKEN" | head -c 600
+          echo ""
+
       - name: Publish
         # --ignore-scripts：上一步的 npm test 已经 build + 跑过 smoke test，
         # 而 package.json 的 prepublishOnly 会再跑一遍同样的东西（还会重复打线上服务器）。
