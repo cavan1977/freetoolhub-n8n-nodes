@@ -1,0 +1,74 @@
+name: OIDC diagnostic
+
+# 一次性诊断工具：当 `npm publish` 报 404/E404（= 完全没认证上）时，
+# 用来区分「OIDC 根本没拿到」还是「拿到了但 npm 侧信任配置不匹配」。
+#
+# 背景：npm **不会**在保存 trusted publisher 配置时做任何校验，
+# 配错了只会在发布那一刻失败，而且报错信息（404 Not Found）指向的是
+# 「包不存在或你没权限」，完全指不到真正的原因。
+#
+# 这个 workflow 分三步取证：
+#   1. OIDC provider 的注入变量在不在（不在 = id-token: write 没生效）
+#   2. 拿一个真 ID token，解开看 aud / repository / workflow_ref 到底是什么
+#   3. 拿这个 token 去调 npm 的 exchange 接口，把注册表真正的原话打出来
+#
+# 用法：Actions → OIDC diagnostic → Run workflow
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Is the OIDC provider visible to this job
+        run: |
+          echo "ACTIONS_ID_TOKEN_REQUEST_URL present: ${ACTIONS_ID_TOKEN_REQUEST_URL:+YES}"
+          echo "ACTIONS_ID_TOKEN_REQUEST_TOKEN present: ${ACTIONS_ID_TOKEN_REQUEST_TOKEN:+YES}"
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+          package-manager-cache: false
+
+      - name: Show what setup-node leaves in .npmrc
+        run: |
+          echo "--- node / npm ---"
+          node -v
+          npm -v
+          echo "--- npm config registry ---"
+          npm config get registry || true
+          echo "--- ~/.npmrc (token redacted) ---"
+          if [ -f "$HOME/.npmrc" ]; then sed -E 's/(_authToken=).*/\1<redacted>/' "$HOME/.npmrc"; else echo "(no ~/.npmrc)"; fi
+          echo "--- NODE_AUTH_TOKEN set? ---"
+          echo "${NODE_AUTH_TOKEN:+YES}${NODE_AUTH_TOKEN:-NO}"
+
+      - name: Request an ID token and decode its claims
+        run: |
+          set -euo pipefail
+          RESP=$(curl -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=npm:registry.npmjs.org")
+          TOKEN=$(node -p "JSON.parse(process.argv[1]).value" "$RESP")
+          echo "::add-mask::$TOKEN"
+          printf '%s' "$TOKEN" > /tmp/oidc.jwt
+          node -e "const p=JSON.parse(Buffer.from(process.argv[1].split('.')[1],'base64url').toString());for(const k of ['aud','iss','sub','repository','repository_owner','workflow_ref','ref','event_name','environment','job_workflow_ref'])console.log(String(k).padEnd(18),JSON.stringify(p[k]));" "$TOKEN"
+
+      - name: Ask npm to exchange it and print the real answer
+        run: |
+          set +e
+          TOKEN=$(cat /tmp/oidc.jwt)
+          echo "=== exchange for n8n-nodes-freetoolhub ==="
+          curl -sS -X POST "https://registry.npmjs.org/-/npm/v1/oidc/token/exchange/package/n8n-nodes-freetoolhub" -H "Authorization: Bearer $TOKEN" | head -c 900
+          echo ""
+          echo "=== control: a package with no trusted publisher (expect unauthorized) ==="
+          curl -sS -X POST "https://registry.npmjs.org/-/npm/v1/oidc/token/exchange/package/lodash" -H "Authorization: Bearer $TOKEN" | head -c 400
+          echo ""
+
+      - name: What npm itself thinks when publishing
+        run: |
+          set +e
+          npm publish --access public --ignore-scripts --dry-run 2>&1 | tail -25
