@@ -1,0 +1,70 @@
+name: Publish to npm
+
+# 用 npm trusted publishing (OIDC) 发布 —— **不需要任何 npm token**。
+#
+# 为什么这么做：bypass-2FA 的 granular access token 已被 npm 逐步废弃
+# （2026-07-31 公告：已不能做账号/包管理操作；2027 年 1 月起连直接发布也会失去）。
+# OIDC 不依赖长期凭证，不会过期，也不会因为 token 泄漏被滥用。
+#
+# ⚠️ 前置条件（在 npmjs.com 上一次性配置，配错不会报错、只会在发布时失败）：
+#   npmjs.com → 本包 → Settings → Trusted publishing → GitHub Actions
+#     Organization or user : cavan1977
+#     Repository           : freetoolhub-n8n-nodes
+#     Workflow filename    : publish.yml      ← 只写文件名，不要带 .github/workflows/ 前缀
+#   三个字段**大小写敏感且必须完全一致**。
+#
+# 发布方式：打 tag（如 v0.1.1）并推送，或在本页手动 Run workflow。
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+# OIDC 必需：没有 id-token: write 会报 ENEEDAUTH（这是最常见的失败原因）
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  publish:
+    # 官方限制：trusted publishing 只支持 GitHub 托管 runner，自托管 runner 不支持
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          # OIDC 要求 Node >= 22.14.0 且 npm CLI >= 11.5.1；Node 24 自带满足条件的 npm
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+          # 发布构建一律不用缓存，避免拿到被污染的依赖树
+          package-manager-cache: false
+
+      # 防止「tag 写 v0.2.0 但 package.json 还是 0.1.0」这种发错版本的经典事故。
+      # npm 不会替你校验这个 —— 它只会把 package.json 里的版本发出去。
+      - name: Verify tag matches package.json version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          TAG="${GITHUB_REF#refs/tags/v}"
+          PKG="$(node -p "require('./package.json').version")"
+          echo "tag=$TAG  package.json=$PKG"
+          if [ "$TAG" != "$PKG" ]; then
+            echo "::error::tag v$TAG 与 package.json 的 $PKG 不一致，拒绝发布"
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: npm ci
+
+      # 显式跑一遍，这样测试失败时日志能明确指向「测试挂了」而不是含糊的「发布挂了」
+      - name: Build and test
+        run: npm test
+
+      - name: Publish
+        # --ignore-scripts：上一步的 npm test 已经 build + 跑过 smoke test，
+        # 而 package.json 的 prepublishOnly 会再跑一遍同样的东西（还会重复打线上服务器）。
+        # 注意：如果以后新增了别的 prepublish 生命周期脚本，这里需要去掉该参数。
+        run: npm publish --access public --ignore-scripts
+        # 这里**故意不设 NODE_AUTH_TOKEN** —— npm CLI 会自动探测 OIDC 环境完成认证。
+        # 另外 provenance（来源证明）在「公开仓库 + 公开包 + OIDC」时会自动生成，无需 --provenance。
