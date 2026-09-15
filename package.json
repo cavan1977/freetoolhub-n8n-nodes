@@ -1,0 +1,71 @@
+{
+  "name": "n8n-nodes-freetoolhub",
+  "version": "0.1.0",
+  "description": "n8n community node for FreeToolHub — call 44 MCP calculators (US tax, finance, business, plus an MCP engineering suite for context budgeting, server trust scoring and security auditing) directly inside your automation workflows.",
+  "keywords": [
+    "n8n-community-node-package",
+    "n8n",
+    "n8n-node",
+    "freetoolhub",
+    "mcp",
+    "model-context-protocol",
+    "tax-calculator",
+    "payroll",
+    "sales-tax",
+    "economic-nexus",
+    "dropshipping",
+    "finance",
+    "calculator"
+  ],
+  "license": "MIT",
+  "homepage": "https://freetoolhub.org/mcp/",
+  "author": {
+    "name": "FreeToolHub",
+    "email": "hello@freetoolhub.org",
+    "url": "https://freetoolhub.org"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cavan1977/freetoolhub-n8n-nodes.git"
+  },
+  "bugs": {
+    "url": "https://github.com/cavan1977/freetoolhub-n8n-nodes/issues"
+  },
+  "scripts": {
+    "build": "tsc && gulp build:icons",
+    "dev": "tsc --watch",
+    "test": "npm run build && node test/smoke.mjs",
+    "format": "prettier nodes credentials --write",
+    "lint": "eslint \"nodes/**/*.ts\" \"credentials/**/*.ts\"",
+    "lintfix": "eslint \"nodes/**/*.ts\" \"credentials/**/*.ts\" --fix",
+    "prepublishOnly": "npm run test"
+  },
+  "files": [
+    "dist"
+  ],
+  "n8n": {
+    "n8nNodesApiVersion": 1,
+    "credentials": [
+      "dist/credentials/FreeToolHubApi.credentials.js"
+    ],
+    "nodes": [
+      "dist/nodes/FreeToolHub/FreeToolHub.node.js"
+    ]
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "eslint": "^8.57.0",
+    "eslint-plugin-n8n-nodes-base": "^1.16.1",
+    "gulp": "^4.0.2",
+    "n8n-workflow": "^1.60.0",
+    "prettier": "^3.3.0",
+    "typescript": "^5.5.0"
+  },
+  "peerDependencies": {
+    "n8n-workflow": "*"
+  },
+  "engines": {
+    "node": ">=18.10"
+  }
+}
