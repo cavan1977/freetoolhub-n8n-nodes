@@ -56,9 +56,7 @@ jobs:
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add package-lock.json
-          git commit -m "chore: regenerate package-lock.json on Linux
-
-A Windows-generated lockfile omits platform-specific optional dependencies
-(chokidar -> fsevents -> bindings/nan/file-uri-to-path), which makes \`npm ci\`
-fail on ubuntu with EUSAGE before the publish step is ever reached."
+          git commit \
+            -m "chore: regenerate package-lock.json on Linux" \
+            -m "A Windows-generated lockfile omits platform-specific optional deps (chokidar -> fsevents -> bindings/nan/file-uri-to-path), so 'npm ci' fails on ubuntu with EUSAGE before the publish step is reached."
           git push
