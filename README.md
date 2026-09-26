@@ -1,6 +1,6 @@
 # n8n-nodes-freetoolhub
 
-An [n8n](https://n8n.io) community node that puts **44 calculators and MCP utilities** inside your workflows — US tax, finance and business (payroll, sales tax, economic nexus, dropshipping profit, mortgage, 401(k) vs Roth, capital gains) plus an MCP engineering suite for context budgeting, server trust scoring, security auditing and client config generation.
+An [n8n](https://n8n.io) community node that puts **50 calculators and MCP utilities** inside your workflows — US tax, finance and business (payroll, sales tax, economic nexus, dropshipping profit, mortgage, 401(k) vs Roth, capital gains) plus an MCP engineering suite for context budgeting, server trust scoring, security auditing and client config generation.
 
 No API key required to start. Install it, drop the node into a workflow, pick a calculator, done.
 
@@ -189,11 +189,11 @@ Real response shape:
 
 ## Available tools
 
-**Tax (12)** — `calculate_se_tax`, `calculate_freelancer_tax`, `calculate_1099k_tax`, `calculate_capital_gains_tax`, `compare_w2_vs_1099`, `get_sales_tax_rate`, `calculate_payroll_tax`, `calculate_estate_tax`, `calculate_hsa_fsa_savings`, `calculate_quarterly_tax`, `check_economic_nexus`, `calculate_tariff`
+**Tax (14)** — `calculate_se_tax`, `calculate_freelancer_tax`, `calculate_1099k_tax`, `calculate_capital_gains_tax`, `compare_w2_vs_1099`, `get_sales_tax_rate`, `calculate_payroll_tax`, `calculate_estate_tax`, `calculate_hsa_fsa_savings`, `calculate_quarterly_tax`, `check_economic_nexus`, `calculate_tariff`, `calculate_income_tax`, `calculate_tax_refund`
 
-**Finance (10)** — `calculate_compound_interest`, `calculate_mortgage`, `compare_401k_vs_roth`, `calculate_car_loan`, `calculate_rental_roi`, `calculate_student_loan`, `calculate_roi`, `calculate_life_insurance`, `calculate_rental_affordability`, `calculate_home_equity`
+**Finance (12)** — `calculate_compound_interest`, `calculate_mortgage`, `compare_401k_vs_roth`, `calculate_car_loan`, `calculate_rental_roi`, `calculate_student_loan`, `calculate_roi`, `calculate_life_insurance`, `calculate_rental_affordability`, `calculate_home_equity`, `calculate_loan`, `calculate_retirement`
 
-**Business (5)** — `calculate_break_even`, `compare_llc_cost`, `calculate_dropship_profit`, `calculate_reseller_profit`, `calculate_freelancer_pricing`
+**Business (7)** — `calculate_break_even`, `compare_llc_cost`, `calculate_dropship_profit`, `calculate_reseller_profit`, `calculate_freelancer_pricing`, `calculate_margin`, `calculate_pay_raise`
 
 **MCP engineering (10)** — `estimate_mcp_context_budget`, `plan_mcp_token_budget`, `compress_tool_definitions`, `score_mcp_server_trust`, `audit_mcp_server_security`, `generate_mcp_client_config`, `generate_mcp_server_card`, `validate_mcp_server_card`, `advise_tool_portfolio`, `find_tool`
 
